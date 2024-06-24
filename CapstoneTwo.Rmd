@@ -1,0 +1,147 @@
+---
+title: "Capstone II"
+output: html_notebook
+---
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(gbm)
+library(randomForest)
+library(xgboost)
+library(corrplot)
+library(e1071)  
+
+
+train <- read.csv('train.csv', sep = ",")
+test <- read.csv('test.csv', sep = ",")
+
+
+print(summary(train))
+print(str(train))
+
+
+sale_price_backup <- train$SalePrice
+
+
+numerical_features <- names(train)[sapply(train, is.numeric)]
+categorical_features <- names(train)[sapply(train, is.factor)]
+
+
+for (feature in numerical_features) {
+  train[[feature]][is.na(train[[feature]])] <- median(train[[feature]], na.rm = TRUE)
+  test[[feature]][is.na(test[[feature]])] <- median(test[[feature]], na.rm = TRUE)
+}
+
+
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+for (feature in categorical_features) {
+  train[[feature]][is.na(train[[feature]])] <- Mode(train[[feature]])
+  test[[feature]][is.na(test[[feature]])] <- Mode(test[[feature]])
+}
+
+
+train <- cbind(train, model.matrix(~ Neighborhood - 1, data = train))
+train <- train %>% select(-Neighborhood)
+
+test <- cbind(test, model.matrix(~ Neighborhood - 1, data = test))
+test <- test %>% select(-Neighborhood)
+
+
+common_cols <- intersect(names(train), names(test))
+train <- train[, common_cols]
+
+
+train$SalePrice <- sale_price_backup
+
+
+if (!'SalePrice' %in% colnames(train)) {
+  stop("SalePrice column not found in the train dataset after re-adding.")
+}
+
+
+train$TotalSF <- train$TotalBsmtSF + train$X1stFlrSF + train$X2ndFlrSF
+test$TotalSF <- test$TotalBsmtSF + test$X1stFlrSF + test$X2ndFlrSF
+
+
+features <- c('TotalSF', 'OverallQual', 'GrLivArea', grep('Neighborhood', names(train), value = TRUE))
+X <- train[, features]
+y <- train$SalePrice
+
+
+set.seed(42)
+train_indices <- sample(seq_len(nrow(X)), size = 0.8 * nrow(X))
+X_train <- X[train_indices, ]
+y_train <- y[train_indices]
+X_val <- X[-train_indices, ]
+y_val <- y[-train_indices]
+
+
+print(dim(X_train))  
+print(length(y_train))
+print(dim(X_val))    
+print(length(y_val))
+
+
+if(length(y_train) == 0 || length(y_val) == 0) {
+  stop("y_train or y_val is empty. Check the splitting process.")
+}
+
+
+train_data <- data.frame(X_train, SalePrice = y_train)
+
+
+set.seed(42)
+gbm_model <- gbm(SalePrice ~ ., data = train_data, distribution = "gaussian", n.trees = 100, interaction.depth = 4, shrinkage = 0.01, cv.folds = 5)
+
+
+cv_results <- gbm.perf(gbm_model, method = "cv")
+cv_scores_gb <- sqrt(gbm_model$cv.error)
+rmse_scores_gb <- mean(cv_scores_gb)
+print(paste('Gradient Boosting Cross-validated RMSE:', rmse_scores_gb))
+
+
+val_predictions <- predict(gbm_model, newdata = X_val, n.trees = gbm_model$n.trees)
+mse <- mean((val_predictions - y_val)^2)
+rmse <- sqrt(mse)
+print(paste('Gradient Boosting Validation RMSE:', rmse))
+
+
+test_predictions <- predict(gbm_model, newdata = test[, features], n.trees = gbm_model$n.trees)
+submission <- data.frame(Id = test$Id, SalePrice = test_predictions)
+write.csv(submission, 'submission_R.csv', row.names = FALSE)
+
+
+sale_price_plot <- ggplot(train, aes(x = SalePrice)) +
+  geom_histogram(binwidth = 10000, fill = "blue", color = "black", alpha = 0.7) +
+  theme_minimal() +
+  ggtitle("Sale Price Distribution")
+
+
+print(sale_price_plot)
+
+
+ggsave('sale_price_distribution_R.png', plot = sale_price_plot, width = 7.29, height = 4.51)
+
+
+selected_features <- c('SalePrice', 'TotalSF', 'OverallQual', 'GrLivArea', grep('Neighborhood', names(train), value = TRUE)[1:5])
+correlation_matrix <- cor(train[, selected_features], use = "complete.obs")
+
+
+corrplot(correlation_matrix, method = "color", type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45, addCoef.col = "black", number.cex = 0.7,
+         col = colorRampPalette(c("blue", "white", "red"))(200))
+
+
+dev.copy(png, 'feature_correlation_heatmap_R.png')
+dev.off()
+
+```
+
+

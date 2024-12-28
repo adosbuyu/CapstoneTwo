@@ -1,5 +1,4 @@
 
----
 
 # **Predicting House Prices**
 
@@ -86,7 +85,7 @@ This feature captures the overall size of the property and improves the predicti
 ## **How to Run the Project**
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/adosbuyu/HousePricePrediction.git
+   git clone https://github.com/adosbuyu/CapstoneTwo
    ```
 2. **Install Dependencies**:
    ```bash

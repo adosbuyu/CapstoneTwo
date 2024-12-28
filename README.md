@@ -82,20 +82,6 @@ This feature captures the overall size of the property and improves the predicti
 
 ---
 
-## **How to Run the Project**
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/adosbuyu/CapstoneTwo
-   ```
-2. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Run the Analysis**:
-   - Jupyter Notebooks are available in the `notebooks/` directory for step-by-step exploration.
-
----
-
 ---
 
 ## **Acknowledgments**

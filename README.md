@@ -82,8 +82,6 @@ This feature captures the overall size of the property and improves the predicti
 
 ---
 
----
-
 ## **Acknowledgments**
 - Dataset: Provided as part of a Kaggle competition on house price prediction.
 - Libraries: Scikit-learn, Pandas, NumPy, Matplotlib, Seaborn, XGBoost.
